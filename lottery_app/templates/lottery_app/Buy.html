@@ -1,0 +1,154 @@
+{% extends 'lottery_app/basic.html' %}
+{% block title %}Buy Lottery{% endblock %}
+{% block content %}
+
+<!-- CSRF for JavaScript -->
+<meta name="csrf-token" content="{{ csrf_token }}">
+
+<div class="bg-gray-900 text-white p-8 rounded-lg shadow-lg max-w-xl mx-auto mt-10">
+    <h2 class="text-3xl font-bold text-teal-400 mb-6 text-center">🎟️ Buy Lottery Ticket</h2>
+
+    <!-- Wallet Connect Buttons -->
+    <div class="flex justify-center mb-4 space-x-4">
+        <button id="connectWallet" class="bg-green-500 hover:bg-green-600 text-black font-semibold py-2 px-4 rounded">
+            Connect Wallet
+        </button>
+        <button id="disconnectWallet" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded hidden">
+            Disconnect
+        </button>
+    </div>
+
+    <!-- Wallet Address Info -->
+    <div id="wallet-address" class="bg-gray-800 p-3 rounded text-sm text-center text-gray-300 mb-6">
+        🔗 Wallet not connected
+    </div>
+
+    <!-- Ticket Form -->
+    <form method="post" onsubmit="event.preventDefault(); enterLottery();">
+        {% csrf_token %}
+        <input type="hidden" name="wallet" id="wallet" />
+
+        <div class="mb-4">
+            <label class="block text-teal-300 mb-1" for="name">Full Name</label>
+            <input name="name" id="name" placeholder="Your name"
+                class="w-full px-4 py-2 rounded bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                required>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-teal-300 mb-1" for="age">Age</label>
+            <input name="age" id="age" type="number" placeholder="Your age"
+                class="w-full px-4 py-2 rounded bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                required>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-teal-300 mb-1" for="mobile">Mobile Number</label>
+            <input name="mobile" id="mobile" type="text" placeholder="Your mobile number"
+                class="w-full px-4 py-2 rounded bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                required>
+        </div>
+
+        <button type="submit"
+            class="w-full bg-teal-500 hover:bg-teal-600 text-black font-semibold py-2 px-4 rounded transition duration-200">
+            💳 Buy Now
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
+
+<script>
+    let web3;
+    let userAccount;
+    const contractABI = [{{ solidity_obj.ABI|safe }}]; // Pass actual ABI from view
+    const contractAddress = "{{ lottery.contract_address }}";
+    let contract;
+    let connected = false;
+
+    const connectBtn = document.getElementById('connectWallet');
+    const disconnectBtn = document.getElementById('disconnectWallet');
+    const walletDisplay = document.getElementById('wallet-address');
+    const walletInput = document.getElementById('wallet');
+
+    window.addEventListener('load', async () => {
+        if (window.ethereum) {
+            web3 = new Web3(window.ethereum);
+            contract = new web3.eth.Contract(contractABI, contractAddress);
+        } else {
+            Swal.fire("MetaMask Missing", "Please install MetaMask!", "warning");
+        }
+    });
+
+    connectBtn.onclick = async () => {
+        try {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            userAccount = accounts[0];
+            walletDisplay.textContent = `🔗 Connected: ${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+            walletInput.value = userAccount;
+            connectBtn.classList.add('hidden');
+            disconnectBtn.classList.remove('hidden');
+            connected = true;
+        } catch (err) {
+            Swal.fire("Connection Failed", err.message, "error");
+        }
+    };
+
+    disconnectBtn.onclick = () => {
+        walletDisplay.textContent = "🔗 Wallet not connected";
+        walletInput.value = "";
+        connectBtn.classList.remove('hidden');
+        disconnectBtn.classList.add('hidden');
+        connected = false;
+    };
+
+    async function enterLottery() {
+        if (!connected) {
+            Swal.fire("Please Connect Wallet", "You must connect your wallet first.", "warning");
+            return;
+        }
+
+        const name = document.getElementById("name").value;
+        const age = document.getElementById("age").value;
+        const mobile = document.getElementById("mobile").value;
+
+        try {
+            await contract.methods.enter().send({
+                from: userAccount,
+                value: web3.utils.toWei("0.002", "ether"),
+                gas: 300000
+            });
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+            const response = await fetch("{% url 'buy' lottery.lottery_id %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({
+                    name: name,
+                    age: age,
+                    mobile: mobile,
+                    wallet_address: userAccount
+                })
+            });
+
+            if (response.ok) {
+                Swal.fire("Success", "You have entered the lottery!", "success")
+                    .then(() => window.location.href = "{% url 'home' %}");
+            } else {
+                const error = await response.json();
+                throw new Error(error.error || "Unknown error");
+            }
+
+        } catch (err) {
+            Swal.fire("Error", err.message, "error");
+        }
+    }
+</script>
+{% endblock %}

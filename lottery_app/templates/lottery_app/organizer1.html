@@ -1,0 +1,319 @@
+{% extends 'lottery_app/basic.html' %}
+{% block title %}Organizer Panel{% endblock %}
+{% block content %}
+<div class="flex max-w-6xl mx-auto gap-6">
+    <!-- Left Sidebar: Profile -->
+    <div class="bg-white w-1/4 p-4 rounded shadow h-fit">
+        <div class="flex items-center gap-3">
+            <img src="" alt="User" class="w-12 h-12 rounded-full">
+            <div>
+                <button onclick="toggleProfile()" class="text-lg font-semibold focus:outline-none">
+                    {{ request.user.name }}
+                </button>
+            </div>
+        </div>
+        <div id="profile-details" class="mt-4 hidden text-sm text-gray-600">
+            <p><strong>Email:</strong> {{ request.user.email }}</p>
+            <p><strong>Phone:</strong> {{ request.user.phone_number }}</p>
+            <p><strong>Wallet:</strong> {{ request.user.wallet_address }}</p>
+            <button class="mt-2 bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded" onclick="location.href='{% url 'logout' %}'">Logout</button>
+        </div>
+    </div>
+
+    <!-- Right Main Content -->
+    <div class="bg-white p-6 rounded shadow w-3/4">
+        <h2 class="text-2xl font-bold mb-4">Contract Status</h2>
+        <div id="contract-info" class="mb-3">
+            <p id="contract-status"></p>
+            <p id="manager-address"></p>
+            <p id="contract-balance"></p>
+            <p id="participant-count"></p>
+            <p id="random-number" class="text-muted"></p>
+        </div>
+
+        <h2 class="text-2xl font-bold mb-4">Host a New Lottery</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input name="lottery_name" placeholder="Lottery Name" class="w-full border p-2 rounded mb-2" required>
+            <input name="amount" placeholder="Lottery Amount (ETH)" class="w-full border p-2 rounded mb-4" required>
+            <button id = "deployBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onclick="deployContract()">Host</button>
+            <button id="winnerBtn" class="btn btn-warning mb-1" onclick="selectWinner()" disabled>🏆 Select Winner</button>
+        </form>
+        <div class="card mt-3">
+            <div class="card-header bg-info text-white">Participants</div>
+            <ul id="participants-list" class="list-group list-group-flush">
+                <li class="list-group-item text-muted">No participants yet</li>
+            </ul>
+        </div>
+      
+        <h3 class="text-xl font-bold mt-8 mb-2">Winner</h3>
+        <div>No Winner Yet</div>
+    </div>
+</div>
+{% endblock %}
+
+
+{%block scripts %}
+<script>
+    window.addEventListener("load", init);
+function toggleProfile() {
+    const details = document.getElementById("profile-details");
+    details.classList.toggle("hidden");
+}
+
+let web3;
+let userAccount;
+let contract;
+let isDeployed = {{ isDeployed}};
+let ABI =[
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "participant",
+				"type": "address"
+			}
+		],
+		"name": "Entered",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "winner",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "WinnerSelected",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "enter",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getBalance",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "manager",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "participants",
+		"outputs": [
+			{
+				"internalType": "address payable",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "random",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "selectwinner",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"stateMutability": "payable",
+		"type": "receive"
+	}
+];
+const BYTECODE = "6080604052348015600e575f80fd5b50335f806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506109038061005b5f395ff3fe608060405260043610610058575f3560e01c806312065fe01461014f57806335c1d34914610179578063481c6a75146101b55780635ec01e4d146101df578063e97dcb6214610209578063f06e40ba146102135761014b565b3661014b5766071afd498d000034146100a6576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161009d906105de565b60405180910390fd5b600133908060018154018082558091505060019003905f5260205f20015f9091909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055503373ffffffffffffffffffffffffffffffffffffffff167f9d8f2d54c1a8ffb26973551e72794da9bd5b8529f24c494a6f1590d35d5e8ecf60405160405180910390a2005b5f80fd5b34801561015a575f80fd5b50610163610229565b6040516101709190610614565b60405180910390f35b348015610184575f80fd5b5061019f600480360381019061019a919061065b565b610230565b6040516101ac91906106c5565b60405180910390f35b3480156101c0575f80fd5b506101c961026b565b6040516101d691906106fe565b60405180910390f35b3480156101ea575f80fd5b506101f361028e565b6040516102009190610614565b60405180910390f35b6102116102c6565b005b34801561021e575f80fd5b506102276103b4565b005b5f47905090565b6001818154811061023f575f80fd5b905f5260205f20015f915054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b5f8054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b5f44426001805490506040516020016102a993929190610737565b604051602081830303815290604052805190602001205f1c905090565b66071afd498d0000341461030f576040517f08c379a0000000000000000000000000000000000000000000000000000000008152600401610306906105de565b60405180910390fd5b600133908060018154018082558091505060019003905f5260205f20015f9091909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055503373ffffffffffffffffffffffffffffffffffffffff167f9d8f2d54c1a8ffb26973551e72794da9bd5b8529f24c494a6f1590d35d5e8ecf60405160405180910390a2565b5f8054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff1614610441576040517f08c379a0000000000000000000000000000000000000000000000000000000008152600401610438906107bd565b60405180910390fd5b6003600180549050101561048a576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161048190610825565b60405180910390fd5b5f61049361028e565b90505f600180549050826104a79190610870565b90505f600182815481106104be576104bd6108a0565b5b905f5260205f20015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1690505f4790508173ffffffffffffffffffffffffffffffffffffffff166108fc8290811502906040515f60405180830381858888f1935050505015801561052f573d5f803e3d5ffd5b508173ffffffffffffffffffffffffffffffffffffffff167f75060f9e79552df167b73353fee6237a75bb5ba8ea022f77224e32f152138bcb826040516105769190610614565b60405180910390a250505050565b5f82825260208201905092915050565b7f456e7472792066656520697320302e30303220455448000000000000000000005f82015250565b5f6105c8601683610584565b91506105d382610594565b602082019050919050565b5f6020820190508181035f8301526105f5816105bc565b9050919050565b5f819050919050565b61060e816105fc565b82525050565b5f6020820190506106275f830184610605565b92915050565b5f80fd5b61063a816105fc565b8114610644575f80fd5b50565b5f8135905061065581610631565b92915050565b5f602082840312156106705761066f61062d565b5b5f61067d84828501610647565b91505092915050565b5f73ffffffffffffffffffffffffffffffffffffffff82169050919050565b5f6106af82610686565b9050919050565b6106bf816106a5565b82525050565b5f6020820190506106d85f8301846106b6565b92915050565b5f6106e882610686565b9050919050565b6106f8816106de565b82525050565b5f6020820190506107115f8301846106ef565b92915050565b5f819050919050565b61073161072c826105fc565b610717565b82525050565b5f6107428286610720565b6020820191506107528285610720565b6020820191506107628284610720565b602082019150819050949350505050565b7f4f6e6c79206d616e616765722063616e2073656c6563742077696e6e657200005f82015250565b5f6107a7601e83610584565b91506107b282610773565b602082019050919050565b5f6020820190508181035f8301526107d48161079b565b9050919050565b7f4174206c656173742033207061727469636970616e74732072657175697265645f82015250565b5f61080f602083610584565b915061081a826107db565b602082019050919050565b5f6020820190508181035f83015261083c81610803565b9050919050565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52601260045260245ffd5b5f61087a826105fc565b9150610885836105fc565b92508261089557610894610843565b5b828206905092915050565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52603260045260245ffdfea2646970667358221220e6778c6e4bfd6f0462239cadc111d36fe152ea5e6ea494867434f03f3c35c17e64736f6c634300081a0033";
+async function connectWallet() {
+    if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        try {
+            const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+            userAccount = accounts[0];
+            document.getElementById("wallet-address").innerText = "Connected: " + userAccount.slice(0, 6) + "..." + userAccount.slice(-4);
+        } catch (err) {
+            Swal.fire("Connection Failed", err.message, "error");
+        }
+    } else {
+        Swal.fire("MetaMask Missing", "Please install MetaMask!", "warning");
+    }
+}
+
+// send data to the server
+function getCookie(name) {
+    const cookieValue = document.cookie.split('; ').find(row => row.startsWith(name + '='));
+    return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : null;
+}
+async function deployContract() {
+    try {
+        contract = new web3.eth.Contract(ABI);
+        const gasEstimate = await contract.deploy({ data: BYTECODE }).estimateGas({ from: userAccount });
+
+        Swal.fire({ title: "Deploying...", html: "Please wait", allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        const contractInstance = await contract.deploy({ data: BYTECODE }).send({
+            from: userAccount,
+            gas: Math.floor(gasEstimate * 1.2),
+            gasPrice: await web3.eth.getGasPrice()
+        });
+
+        contract = contractInstance;
+        const data = {
+            isDeployed : true,
+            contract_address: contract,
+            lottery_name: document.querySelector('input[name="lottery_name"]').value,
+            lottery_amount: document.querySelector('input[name="amount"]').value,
+        };
+    
+        fetch("/organizer/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")  // CSRF protection
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Server response:", data);
+        });
+        
+       
+        Swal.fire("Success", `Contract deployed at ${contract.options.address}`, "success");
+        document.getElementById("deployBtn").disabled = true;
+        document.getElementById("winnerBtn").disabled = false;
+
+        await updateUI();
+        console.log("Contract deployed at: " )
+    } catch (err) {
+        console.log("Error deploying contract: ", err)
+        Swal.fire("Error", err.message, "error");
+    }
+}
+async function init() {
+    await connectWallet();
+    if (isDeployed) {
+        contract = new web3.eth.Contract(ABI, "{{ contract_address|safe }}");
+        await updateUI();
+
+        document.getElementById("winnerBtn").disabled = false;
+        document.getElementById("deployBtn").disabled = true;
+        setInterval(async () => {
+            await updateUI();
+        }, 60000);
+    } else {
+        await deployContract();
+    }
+}
+async function updateUI() {
+    const manager = await contract.methods.manager().call();
+    document.getElementById("manager-address").innerText = "Manager: " + manager;
+console.log("Manager address: ", manager);
+    const balance = await contract.methods.getBalance().call();
+    console.log("Contract balance: ", balance);
+    const ether = web3.utils.fromWei(balance, 'ether');
+    document.getElementById("contract-balance").innerText = "Balance: " + ether + " ETH";
+    console.log("Contract balance in ether: ", ether);
+
+    document.getElementById("contract-status").innerText = isManager ? "You are the Manager" : "Contract deployed";
+
+    await updateParticipants();
+}
+
+async function updateParticipants() {
+    let i = 0, count = 0;
+    const list = document.getElementById("participants-list");
+    list.innerHTML = "";
+
+    try {
+        while (true) {
+            const p = await contract.methods.participants(i).call();
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.innerText = (i + 1) + ". " + p;
+            list.appendChild(li);
+            i++;
+        }
+    } catch (e) {
+        count = i;
+    }
+
+    if (count === 0) {
+        list.innerHTML = "<li class='list-group-item text-muted'>No participants yet</li>";
+    }
+
+    document.getElementById("participant-count").innerText = "Participants: " + count;
+}
+async function selectWinner() {
+    try {
+        await contract.methods.selectwinner().send({
+            from: userAccount,
+            gas: 300000
+        });
+        Swal.fire("Winner Selected", "Winner has been picked and rewarded!", "success");
+        await updateUI();
+    } catch (err) {
+        Swal.fire("Error", err.message, "error");
+    }
+}
+
+</script>
+
+{% endblock %}

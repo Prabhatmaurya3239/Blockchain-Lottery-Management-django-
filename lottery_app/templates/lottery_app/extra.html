@@ -1,0 +1,442 @@
+{% comment %} {% block content %}
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4>Lottery Contract Deployment</h4>
+        </div>
+        <div class="card-body">
+            <!-- Wallet Connection -->
+            <div class="mb-3">
+                <button id="connectWalletBtn" class="btn btn-outline-primary">Connect Wallet</button>
+                <span id="walletAddress" class="ms-2"></span>
+            </div>
+
+            <!-- Deployment Options -->
+            <div class="mb-3" id="deployOptions">
+                <h5>Deployment Options:</h5>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="deployType" id="deployNew" checked>
+                    <label class="form-check-label" for="deployNew">
+                        Deploy New Contract
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="deployType" id="useExisting">
+                    <label class="form-check-label" for="useExisting">
+                        Use Existing Contract
+                    </label>
+                </div>
+                
+                <div id="existingContractInput" class="mt-2" style="display:none;">
+                    <input type="text" id="contractAddress" class="form-control" placeholder="0x...">
+                </div>
+            </div>
+
+            <!-- Environment Selection -->
+            <div class="mb-3">
+                <label class="form-label">Environment:</label>
+                <select id="environment" class="form-select">
+                    <option value="injected">Injected Web3 (MetaMask)</option>
+                    <option value="sepolia">Sepolia Testnet</option>
+                    <option value="mainnet">Ethereum Mainnet</option>
+                </select>
+            </div>
+
+            <!-- Gas Configuration -->
+            <div class="mb-3">
+                <label class="form-label">Gas Configuration:</label>
+                <select id="gasConfig" class="form-select">
+                    <option value="auto">Auto (Recommended)</option>
+                    <option value="manual">Manual</option>
+                </select>
+                <div id="manualGasConfig" style="display:none;" class="mt-2">
+                    <input type="number" id="gasLimit" class="form-control mb-2" placeholder="Gas Limit">
+                    <input type="number" id="gasPrice" class="form-control" placeholder="Gas Price (Gwei)">
+                </div>
+            </div>
+
+            <!-- Deploy/Connect Buttons -->
+            <div class="d-grid gap-2">
+                <button id="deployBtn" class="btn btn-success" disabled>Deploy Contract</button>
+                <button id="connectBtn" class="btn btn-info" disabled>Connect to Contract</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contract Interaction Panel (shown after deployment/connection) -->
+    <div id="contractPanel" class="mt-4" style="display:none;">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4>Contract Actions</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <button id="enterLotteryBtn" class="btn btn-primary">Enter Lottery (0.002 ETH)</button>
+                        </div>
+                        <div class="mb-3">
+                            <button id="selectWinnerBtn" class="btn btn-warning">Select Winner</button>
+                        </div>
+                        <div class="mb-3">
+                            <button id="getRandomBtn" class="btn btn-secondary">Get Random Number</button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                Contract Info
+                            </div>
+                            <div class="card-body">
+                                <p id="contractManager"></p>
+                                <p id="contractBalance"></p>
+                                <p id="participantCount"></p>
+                                <div id="winnerDisplay" class="alert alert-success mt-3" style="display:none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Contract ABI and Bytecode (from your original contract)
+const LOTTERY_ABI = [
+    {
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "inputs": [],
+        "name": "getBalance",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "manager",
+        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "name": "participants",
+        "outputs": [{"internalType": "address payable", "name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "random",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "selectwinner",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "stateMutability": "payable",
+        "type": "receive"
+    }
+];
+ // Your ABI here
+const LOTTERY_BYTECODE = "6080604052348015600e575f80fd5b50335f806101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506107088061005b5f395ff3fe60806040526004361061004d575f3560e01c806312065fe0146100c957806335c1d349146100f3578063481c6a751461012f5780635ec01e4d14610159578063f06e40ba14610183576100c5565b366100c55766071afd498d00003414610064575f80fd5b600133908060018154018082558091505060019003905f5260205f20015f9091909190916101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055005b5f80fd5b3480156100d4575f80fd5b506100dd610199565b6040516100ea91906104bc565b60405180910390f35b3480156100fe575f80fd5b5061011960048036038101906101149190610503565b6101f7565b604051610126919061056d565b60405180910390f35b34801561013a575f80fd5b50610143610232565b60405161015091906105a6565b60405180910390f35b348015610164575f80fd5b5061016d610255565b60405161017a91906104bc565b60405180910390f35b34801561018e575f80fd5b5061019761028d565b005b5f805f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146101f1575f80fd5b47905090565b60018181548110610206575f80fd5b905f5260205f20015f915054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b5f8054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b5f4442600180549050604051602001610270939291906105df565b604051602081830303815290604052805190602001205f1c905090565b5f8054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff16146102e3575f80fd5b600360018054905010156102f5575f80fd5b5f6102fe610255565b90505f80600180549050836103139190610648565b90506001818154811061032957610328610678565b5b905f5260205f20015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1691508173ffffffffffffffffffffffffffffffffffffffff166108fc610375610199565b90811502906040515f60405180830381858888f1935050505015801561039d573d5f803e3d5ffd5b505f67ffffffffffffffff8111156103b8576103b76106a5565b5b6040519080825280602002602001820160405280156103e65781602001602082028036833780820191505090505b50600190805190602001906103fc929190610402565b50505050565b828054828255905f5260205f20908101928215610478579160200282015b82811115610477578251825f6101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555091602001919060010190610420565b5b5090506104859190610489565b5090565b5b808211156104a0575f815f90555060010161048a565b5090565b5f819050919050565b6104b6816104a4565b82525050565b5f6020820190506104cf5f8301846104ad565b92915050565b5f80fd5b6104e2816104a4565b81146104ec575f80fd5b50565b5f813590506104fd816104d9565b92915050565b5f60208284031215610518576105176104d5565b5b5f610525848285016104ef565b91505092915050565b5f73ffffffffffffffffffffffffffffffffffffffff82169050919050565b5f6105578261052e565b9050919050565b6105678161054d565b82525050565b5f6020820190506105805f83018461055e565b92915050565b5f6105908261052e565b9050919050565b6105a081610586565b82525050565b5f6020820190506105b95f830184610597565b92915050565b5f819050919050565b6105d96105d4826104a4565b6105bf565b82525050565b5f6105ea82866105c8565b6020820191506105fa82856105c8565b60208201915061060a82846105c8565b602082019150819050949350505050565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52601260045260245ffd5b5f610652826104a4565b915061065d836104a4565b92508261066d5761066c61061b565b5b828206905092915050565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52603260045260245ffd5b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffdfea264697066735822122081acbc41959b067eb1d2b24c1741450bf161f20b135d71452b57a5094a4bcd4664736f6c634300081a0033";
+// Your bytecode here
+
+let web3;
+let userAccount;
+let contractInstance;
+let isManager = false;
+
+// Initialize when page loads
+window.addEventListener('load', async () => {
+    // Setup event listeners
+    document.getElementById('deployNew').addEventListener('change', toggleDeployOptions);
+    document.getElementById('useExisting').addEventListener('change', toggleDeployOptions);
+    document.getElementById('gasConfig').addEventListener('change', toggleGasConfig);
+    document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
+    document.getElementById('deployBtn').addEventListener('click', deployContract);
+    document.getElementById('connectBtn').addEventListener('click', connectToExistingContract);
+    
+    document.getElementById('enterLotteryBtn').addEventListener('click', enterLottery);
+    document.getElementById('selectWinnerBtn').addEventListener('click', selectWinner);
+    document.getElementById('getRandomBtn').addEventListener('click', getRandomNumber);
+});
+
+// Toggle between deploy options
+function toggleDeployOptions() {
+    const existingInput = document.getElementById('existingContractInput');
+    if (document.getElementById('useExisting').checked) {
+        existingInput.style.display = 'block';
+        document.getElementById('deployBtn').disabled = true;
+        document.getElementById('connectBtn').disabled = false;
+    } else {
+        existingInput.style.display = 'none';
+        document.getElementById('deployBtn').disabled = false;
+        document.getElementById('connectBtn').disabled = true;
+    }
+}
+
+// Toggle gas configuration
+function toggleGasConfig() {
+    const manualConfig = document.getElementById('manualGasConfig');
+    if (document.getElementById('gasConfig').value === 'manual') {
+        manualConfig.style.display = 'block';
+    } else {
+        manualConfig.style.display = 'none';
+    }
+}
+console.log("Checking for web3 provider...");
+// Connect wallet function
+async function connectWallet() {
+    console.log("Connecting to wallet...");
+    if (window.ethereum) {
+        try {
+            web3 = new Web3(window.ethereum);
+            const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+            userAccount = accounts[0];
+            
+            document.getElementById('walletAddress').textContent = 
+                `Connected: ${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
+            console.log("Connected account:", userAccount);
+            // Enable deployment/connection buttons
+            document.getElementById('deployBtn').disabled = false;
+            document.getElementById('connectBtn').disabled = false;
+            
+            // Check network based on selection
+            await checkNetwork();
+            
+        } catch (error) {
+            console.error("Wallet connection failed:", error);
+            alert(`Wallet connection failed: ${error.message}`);
+        }
+    } else {
+        alert('Please install MetaMask or another Web3 provider');
+    }
+}
+
+// Check and switch network if needed
+async function checkNetwork() {
+    const environment = document.getElementById('environment').value;
+    let targetChainId;
+    
+    switch(environment) {
+        case 'sepolia':
+            targetChainId = '0xaa36a7'; // 11155111
+            break;
+        case 'mainnet':
+            targetChainId = '0x1'; // 1
+            break;
+        default: // injected
+            return; // Use whatever the wallet is set to
+    }
+    
+    try {
+        const currentChainId = await web3.eth.getChainId();
+        if (`0x${currentChainId.toString(16)}` !== targetChainId) {
+            await window.ethereum.request({
+                method: 'wallet_switchEthereumChain',
+                params: [{ chainId: targetChainId }],
+            });
+        }
+    } catch (error) {
+        console.error("Network switch failed:", error);
+        alert(`Please switch to the correct network in your wallet`);
+    }
+}
+
+// Deploy new contract
+async function deployContract() {
+    try {
+        const contract = new web3.eth.Contract(LOTTERY_ABI);
+        
+        // Get gas parameters
+        let gasParams = {};
+        if (document.getElementById('gasConfig').value === 'manual') {
+            gasParams = {
+                gas: document.getElementById('gasLimit').value || 2000000,
+                gasPrice: web3.utils.toWei(
+                    document.getElementById('gasPrice').value || '10', 'gwei'
+                )
+            };
+        } else {
+            // Auto estimation
+            const gasEstimate = await contract.deploy({
+                data: LOTTERY_BYTECODE
+            }).estimateGas({ from: userAccount });
+            
+            gasParams = {
+                gas: Math.floor(gasEstimate * 1.2), // 20% buffer
+                gasPrice: await web3.eth.getGasPrice()
+            };
+        }
+        
+        // Show loading indicator
+        Swal.fire({
+            title: 'Deploying Contract',
+            html: 'Please wait while we deploy your contract...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+        
+        // Deploy the contract
+        contractInstance = await contract.deploy({
+            data: LOTTERY_BYTECODE
+        }).send({
+            from: userAccount,
+            ...gasParams
+        });
+        
+        // Success - show contract panel
+        isManager = true;
+        showContractPanel();
+        Swal.fire('Success!', `Contract deployed at: ${contractInstance.options.address}`, 'success');
+        
+    } catch (error) {
+        console.error("Deployment failed:", error);
+        Swal.fire('Error', `Deployment failed: ${error.message}`, 'error');
+    }
+}
+
+// Connect to existing contract
+async function connectToExistingContract() {
+    try {
+        const address = document.getElementById('contractAddress').value;
+        if (!web3.utils.isAddress(address)) {
+            throw new Error('Invalid contract address');
+        }
+        
+        contractInstance = new web3.eth.Contract(LOTTERY_ABI, address);
+        
+        // Verify contract exists
+        const code = await web3.eth.getCode(address);
+        if (code === '0x') {
+            throw new Error('No contract found at this address');
+        }
+        
+        // Check if user is manager
+        const manager = await contractInstance.methods.manager().call();
+        isManager = (manager.toLowerCase() === userAccount.toLowerCase());
+        
+        showContractPanel();
+        Swal.fire('Success!', 'Connected to existing contract', 'success');
+        
+    } catch (error) {
+        console.error("Connection failed:", error);
+        Swal.fire('Error', `Connection failed: ${error.message}`, 'error');
+    }
+}
+
+// Show the contract interaction panel
+function showContractPanel() {
+    document.getElementById('deployOptions').style.display = 'none';
+    document.getElementById('contractPanel').style.display = 'block';
+    
+    // Update contract info
+    updateContractInfo();
+    
+    // Only show winner button for manager
+    document.getElementById('selectWinnerBtn').style.display = isManager ? 'block' : 'none';
+}
+
+// Update contract information
+async function updateContractInfo() {
+    try {
+        const manager = await contractInstance.methods.manager().call();
+        const balance = await contractInstance.methods.getBalance().call();
+        
+        document.getElementById('contractManager').textContent = `Manager: ${manager}`;
+        document.getElementById('contractBalance').textContent = 
+            `Contract Balance: ${web3.utils.fromWei(balance, 'ether')} ETH`;
+        
+        // Get participant count
+        let participantCount = 0;
+        try {
+            while (true) {
+                await contractInstance.methods.participants(participantCount).call();
+                participantCount++;
+            }
+        } catch {
+            // Expected when we go beyond array bounds
+        }
+        
+        document.getElementById('participantCount').textContent = `Participants: ${participantCount}`;
+        
+    } catch (error) {
+        console.error("Failed to update contract info:", error);
+    }
+}
+
+// Contract interaction functions
+async function enterLottery() {
+    try {
+        await contractInstance.methods.enter().send({
+            from: userAccount,
+            value: web3.utils.toWei('0.002', 'ether'),
+            gas: 300000
+        });
+        
+        Swal.fire('Success!', 'You have entered the lottery!', 'success');
+        updateContractInfo();
+        
+    } catch (error) {
+        console.error("Entry failed:", error);
+        Swal.fire('Error', `Entry failed: ${error.message}`, 'error');
+    }
+}
+
+async function selectWinner() {
+    try {
+        Swal.fire({
+            title: 'Selecting Winner',
+            html: 'Processing transaction...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+        
+        await contractInstance.methods.selectwinner().send({
+            from: userAccount,
+            gas: 500000
+        });
+        
+        // Display winner
+        const winnerDisplay = document.getElementById('winnerDisplay');
+        winnerDisplay.textContent = 'Winner has been selected and paid!';
+        winnerDisplay.style.display = 'block';
+        
+        Swal.fire('Success!', 'Winner selected successfully!', 'success');
+        updateContractInfo();
+        
+    } catch (error) {
+        console.error("Selection failed:", error);
+        Swal.fire('Error', `Selection failed: ${error.message}`, 'error');
+    }
+}
+
+async function getRandomNumber() {
+    try {
+        const randomNum = await contractInstance.methods.random().call();
+        Swal.fire('Random Number', `Generated number: ${randomNum}`, 'info');
+    } catch (error) {
+        console.error("Failed to get random number:", error);
+        Swal.fire('Error', `Failed to get random number: ${error.message}`, 'error');
+    }
+}
+    
+</script>
+{% endblock %} {% endcomment %}

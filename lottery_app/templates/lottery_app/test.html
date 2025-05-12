@@ -1,0 +1,132 @@
+{% extends 'lottery_app/base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>Lottery Contract</h3>
+    </div>
+    <div class="card-body">
+        <button onclick="connectWallet()" class="btn btn-primary">Connect Wallet</button>
+        <button onclick="enterLottery()" class="btn btn-success">Enter Lottery (0.002 ETH)</button>
+        <button onclick="getBalance()" class="btn btn-info">Check Contract Balance</button>
+        <button onclick="checkManager()" class="btn btn-secondary">Check Manager</button>
+        <button onclick="announceWinner()" class="btn btn-warning">Announce Winner</button>
+        
+        <div class="mt-3">
+            <p id="balance-result"></p>
+            <p id="manager-result"></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Your existing JavaScript code goes here
+    let web3;
+    let userAccount;
+    let contract;
+
+    const CONTRACT_ADDRESS = "0xdC3A27d2421b08B5CC7aAD9F744e20C2CE583A79";
+    const ABI = [
+        {
+            "inputs": [],
+            "stateMutability": "nonpayable",
+            "type": "constructor"
+        },
+        {
+            "inputs": [],
+            "name": "getBalance",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "manager",
+            "outputs": [
+                {
+                    "internalType": "address",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "name": "participants",
+            "outputs": [
+                {
+                    "internalType": "address payable",
+                    "name": "",
+                    "type": "address"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "random",
+            "outputs": [
+                {
+                    "internalType": "uint256",
+                    "name": "",
+                    "type": "uint256"
+                }
+            ],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "selectwinner",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+        },
+        {
+            "stateMutability": "payable",
+            "type": "receive"
+        }
+    ]; 
+
+     window.addEventListener("load", async () => {
+        if (window.ethereum) {
+            web3 = new Web3(window.ethereum);
+            try {
+                const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+                userAccount = accounts[0];
+                contract = new web3.eth.Contract(ABI, CONTRACT_ADDRESS);
+                document.getElementById("wallet-address").innerText = "Connected: " + userAccount;
+            } catch (err) {
+                Swal.fire("Connection Error", err.message, "error");
+            }
+        } else {
+            Swal.fire("MetaMask Missing", "Please install MetaMask!", "warning");
+        }
+    }); 
+
+    // Include all your other JavaScript functions here
+    async function connectWallet() { console.log("Wallet connected"); }
+    async function enterLottery() { console.log("Entered lottery"); }
+    async function getBalance() { console.log("Contract balance checked"); }
+    async function checkManager() { console.log("Manager checked"); }
+    async function announceWinner() { console.log("Winner announced"); }
+    console.log("JavaScript loaded");
+</script>
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends 'lottery_app/basic.html' %}
+{% block title %}Organizer Panel{% endblock %}
+
+{% block content %}
+<div class="flex flex-col lg:flex-row max-w-6xl mx-auto gap-6 mt-8 text-white">
+    <!-- Sidebar -->
+    <div class="bg-gray-900 w-full lg:w-1/4 p-4 rounded-lg shadow-md">
+        <div class="flex items-center gap-3 mb-4">
+            <img src="" alt="User" class="w-12 h-12 rounded-full bg-gray-700">
+            <div>
+                <button onclick="toggleProfile()" class="text-lg font-semibold focus:outline-none">
+                    {{ request.user.name }}
+                </button>
+            </div>
+        </div>
+        <div id="profile-details" class="mt-4 hidden text-sm text-gray-300">
+            <p><strong>Email:</strong> {{ request.user.email }}</p>
+            <p><strong>Phone:</strong> {{ request.user.phone_number }}</p>
+            <p><strong>Wallet:</strong> {{ request.user.wallet_address }}</p>
+            <button class="mt-3 bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" onclick="location.href='{% url 'logout' %}'">
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="bg-gray-800 p-6 rounded-lg shadow-md w-full lg:w-3/4">
+        <h2 class="text-2xl font-bold mb-4">🎯 Contract Status</h2>
+        <div id="contract-info" class="text-gray-300 space-y-1 mb-6">
+            <p id="contract-status"></p>
+            <p id="manager-address"></p>
+            <p id="contract-balance"></p>
+            <p id="participant-count"></p>
+            <p id="random-number" class="text-sm italic"></p>
+        </div>
+
+        <h2 class="text-2xl font-bold mb-4">🎰 Host a New Lottery</h2>
+        <form method="post" onsubmit="return false;">
+            {% csrf_token %}
+            <input name="lottery_name" placeholder="Lottery Name"
+                   class="w-full bg-gray-700 text-white border border-gray-600 p-2 rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            <input name="amount" placeholder="Lottery Amount (ETH)"
+                   class="w-full bg-gray-700 text-white border border-gray-600 p-2 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            <div class="flex gap-3 mb-4">
+                <button type="button" id="deployBtn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded transition"
+                        onclick="deployContract()">Host</button>
+                <button type="button" id="winnerBtn"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-2 px-4 rounded transition"
+                        onclick="selectWinner()" disabled>🏆 Select Winner</button>
+            </div>
+        </form>
+
+        <div class="bg-gray-700 rounded-lg p-4 mt-4">
+            <h3 class="text-lg font-bold mb-2 text-white">👥 Participants</h3>
+            <ul id="participants-list" class="space-y-1 text-gray-200 text-sm">
+                <li class="text-gray-400 italic">No participants yet</li>
+            </ul>
+        </div>
+
+        <h3 class="text-xl font-bold mt-8 mb-2">🏅 Winner</h3>
+        <div class="text-gray-300">No Winner Yet</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.addEventListener("load", init);
+
+function toggleProfile() {
+    const details = document.getElementById("profile-details");
+    details.classList.toggle("hidden");
+}
+
+let web3;
+let userAccount;
+let contract;
+let isDeployed = {{ isDeployed|safe }};
+let ABI = [ {{solidity_obj.ABI|safe}}]; // Keep your ABI here
+let BYTECODE = "{{solidity_obj.Byte_code}}"; //
+console.log("Bytecode: ", BYTECODE);
+function getCookie(name) {
+    const cookieValue = document.cookie.split('; ').find(row => row.startsWith(name + '='));
+    return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : null;
+}
+
+async function connectWallet() {
+    if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        try {
+            const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+            userAccount = accounts[0];
+        } catch (err) {
+            alert("Wallet connection failed: " + err.message);
+        }
+    } else {
+        alert("Please install MetaMask to continue.");
+    }
+}
+
+async function deployContract() {
+    try {
+        contract = new web3.eth.Contract(ABI);
+        const gasEstimate = await contract.deploy({ data: BYTECODE }).estimateGas({ from: userAccount });
+        console.log("Gas estimate: ", gasEstimate);
+        const contractInstance = await contract.deploy({ data: BYTECODE }).send({
+            from: userAccount,
+            gas: Math.floor(gasEstimate * 1.2),
+            gasPrice: await web3.eth.getGasPrice()
+        });
+
+        contract = contractInstance;
+        const data = {
+            isDeployed: true,
+            contract_address: contract.options.address,
+            lottery_name: document.querySelector('input[name="lottery_name"]').value,
+            lottery_amount: document.querySelector('input[name="amount"]').value,
+        };
+
+        await fetch("/organizer/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: JSON.stringify(data)
+        });
+
+        alert("Contract deployed successfully at " + contract.options.address);
+        document.getElementById("deployBtn").disabled = true;
+        document.getElementById("winnerBtn").disabled = false;
+        await updateUI();
+    } catch (err) {
+        console.error(err);
+        alert("Error deploying contract: " + err.message);
+    }
+}
+
+async function init() {
+    await connectWallet();
+    if (isDeployed) {
+        contract = new web3.eth.Contract(ABI, "{{ contract_address|safe }}");
+        document.getElementById("winnerBtn").disabled = false;
+        document.getElementById("deployBtn").disabled = true;
+        await updateUI();
+        setInterval(updateUI, 60000);
+    }
+}
+
+async function updateUI() {
+    const manager = await contract.methods.manager().call();
+    const isManager = manager.toLowerCase() === userAccount.toLowerCase();
+    document.getElementById("manager-address").innerText = "Manager: " + manager;
+    document.getElementById("contract-status").innerText = isManager ? "You are the Manager" : "Contract deployed";
+
+    const balance = await contract.methods.getBalance().call();
+    const ether = web3.utils.fromWei(balance, 'ether');
+    document.getElementById("contract-balance").innerText = "Balance: " + ether + " ETH";
+
+    await updateParticipants();
+}
+
+async function updateParticipants() {
+    let i = 0, count = 0;
+    const list = document.getElementById("participants-list");
+    list.innerHTML = "";
+    try {
+        while (true) {
+            const p = await contract.methods.participants(i).call();
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.innerText = (i + 1) + ". " + p;
+            list.appendChild(li);
+            i++;
+        }
+    } catch (e) {
+        count = i;
+    }
+    if (count === 0) {
+        list.innerHTML = "<li class='list-group-item text-muted'>No participants yet</li>";
+    }
+    document.getElementById("participant-count").innerText = "Participants: " + count;
+}
+
+async function selectWinner() {
+    try {
+        await contract.methods.selectwinner().send({
+            from: userAccount,
+            gas: 300000
+        });
+        alert("Winner has been selected!");
+        const winner = await contract.methods.winner().call();
+        console.log("Winner: ", winner);
+        const winnerText = document.querySelector(".winner-text");
+        if (winnerText) {
+            winnerText.innerText = "Winner: " + winner;
+        } else {
+            const newWinnerText = document.createElement("div");
+            newWinnerText.className = "winner-text text-gray-300";
+            newWinnerText.innerText = "Winner: " + winner;
+            document.querySelector(".bg-gray-800").appendChild(newWinnerText);
+        }
+        await updateUI();
+    } catch (err) {
+        alert("Error selecting winner: " + err.message);
+    }
+}
+</script>
+{% endblock %}

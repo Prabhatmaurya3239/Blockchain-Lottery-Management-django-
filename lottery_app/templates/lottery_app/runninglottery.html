@@ -1,0 +1,84 @@
+{% extends 'lottery_app/basic.html' %}
+{% block title %}Running Lottery{% endblock %}
+{% block content %}
+<div class="bg-gray-900 text-white p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
+    <h2 class="text-3xl font-bold mb-6 text-teal-400">🎟️ Lottery Details</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div><b>Lottery ID:</b> LI{{ lottery.lottery_id }}</div>
+        <div><b>Organizer:</b> {{ lottery.organizer }}</div>
+        <div><b>Organizer Address:</b> 0x12abcd...XYZ</div>
+        <div><b>Buy Amount:</b> {{ lottery.amount }} ETH</div>
+        <div><b>Total Participants:</b> {{ participants|length }}</div>
+        <div><b>End Date:</b> 30th April 2025</div>
+        <div><b>Active:</b> 
+            <span class="px-2 py-1 rounded bg-green-500 text-white text-xs">
+                {{ lottery.is_active|yesno:"Yes,No" }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Buy Button -->
+    <a href="{% url 'buy' lottery.lottery_id %}" 
+       class="bg-teal-500 hover:bg-teal-600 text-black font-bold py-2 px-4 rounded inline-block mt-2">
+        Buy Ticket 🎫
+    </a>
+
+    <!-- Participant List -->
+    <div class="mt-10">
+        <h3 class="text-xl font-semibold mb-4 text-teal-300">👥 Participants</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-white border border-gray-700">
+                <thead class="bg-gray-800 text-teal-400">
+                    
+                    <tr>
+                        <th class="px-4 py-2 border-r border-gray-700">Name</th>
+                        <th class="px-4 py-2 border-r border-gray-700">Wallet Address</th>
+                        <th class="px-4 py-2">Date Joined</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in participants %}
+                    <tr class="bg-gray-800 border-b border-gray-700">
+                        <td class="px-4 py-2 border-r border-gray-700">{{ p.name }}</td>
+                        <td class="px-4 py-2 border-r border-gray-700">{{ p.wallet_address }}</td>
+                        <td class="px-4 py-2">{{ p.created_at }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center py-4">No participants yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Winner Section -->
+    <div class="mt-10">
+        <h3 class="text-xl font-semibold mb-2 text-yellow-300">🏆 Winner</h3>
+        {% with winner_found=False %}
+        {% for p in participants %}
+            {% if p.is_winner %}
+                <div class="p-4 bg-green-800 rounded shadow text-white mb-4">
+                    <div><b>Name:</b> {{ p.name }}</div>
+                    <div><b>Wallet:</b> {{ p.wallet_address }}</div>
+                    <div><b>Amount Won:</b> {{ p.amount }} ETH</div>
+                    <button class="text-blue-300 underline mt-2" onclick="alert('{{ p.wallet_address }}')">
+                        View Wallet Address
+                    </button>
+                </div>
+                {% with winner_found=True %}
+                {% endwith %}
+            {% endif %}
+        {% endfor %}
+    
+        {% if not winner_found %}
+            <div class="p-4 bg-yellow-700 text-white rounded shadow">
+                🕒 Winner will be announced soon. Stay tuned!
+            </div>
+        {% endif %}
+    {% endwith %}
+    </div>
+</div>
+{% endblock %}

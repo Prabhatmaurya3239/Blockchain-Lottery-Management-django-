@@ -1,0 +1,64 @@
+{% extends 'lottery_app/basic.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-white text-black p-8 rounded-lg shadow-lg mt-12">
+    <h2 class="text-3xl font-bold mb-6 text-center">Login to Lucky Draw</h2>
+    
+    <form method="post" id="loginForm">
+        {% csrf_token %}
+
+        <!-- Email or Mobile -->
+        <input name="email_or_phone" type="text" placeholder="Email or Mobile Number"
+               class="w-full border border-gray-300 p-3 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+               required>
+
+        <!-- Wallet Address -->
+        <div class="flex mb-4">
+            <input id="walletAddressInputLogin" name="wallet_address" type="text" placeholder="Wallet Address" readonly
+                   class="w-full border border-gray-300 p-3 rounded-l focus:outline-none">
+            <button type="button"
+                    onclick="connectWallet('walletAddressInputLogin')"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 rounded-r font-semibold">
+                Connect
+            </button>
+        </div>
+
+        <!-- Password -->
+        <input name="password" type="password" placeholder="Password"
+               class="w-full border border-gray-300 p-3 rounded mb-6 focus:outline-none focus:ring-2 focus:ring-blue-400"
+               required>
+
+        <!-- Submit Button -->
+        <button type="submit"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded transition">
+            Login
+        </button>
+    </form>
+
+    <!-- Links -->
+    <div class="text-center mt-6 text-sm">
+        <a href="{% url 'signup' %}" class="text-blue-600 hover:underline">Sign Up</a> |
+        <a href="{% url 'Forget_password' %}" class="text-blue-600 hover:underline">Forgot Password?</a>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>    
+      async function connectWallet(inputId) {
+    if (window.ethereum) {
+        try {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const address = accounts[0];
+            document.getElementById(inputId).value = address;
+        } catch (error) {
+            console.error("User rejected request", error);
+            alert("Failed to connect wallet!");
+        }
+    } else {
+        alert("MetaMask not detected!");
+    }
+}
+</script>
+{% endblock %}
