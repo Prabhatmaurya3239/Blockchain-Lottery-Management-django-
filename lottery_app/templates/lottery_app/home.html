@@ -1,14 +1,13 @@
 {% extends 'lottery_app/basic.html' %}
 {% block title %}Home{% endblock %}
 {% block content %}
-
-<!-- Background click animation script -->
+{% load static %}
+<!-- Click ripple effect -->
 <style>
     body {
         background-color: #0e0e10;
         color: white;
         font-family: 'Inter', sans-serif;
-        position: relative;
         overflow-x: hidden;
     }
 
@@ -24,14 +23,8 @@
     }
 
     @keyframes ripple {
-        0% {
-            transform: scale(1);
-            opacity: 1;
-        }
-        100% {
-            transform: scale(15);
-            opacity: 0;
-        }
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(15); opacity: 0; }
     }
 </style>
 
@@ -51,12 +44,16 @@
     <p class="text-gray-400 mb-10">Try your luck and win big in our exciting lotteries.</p>
 
     <!-- Active Lotteries -->
-    <h2 class="text-2xl font-semibold mb-4"> Active Lotteries</h2>
-    <div class="grid md:grid-cols-3 gap-6 mb-10">
-        {% for lottery in lotteries %}
-            {% if lottery.is_active %}
-            <a href="{% url 'runninglotteryview' lottery.lottery_id %}">
-            <div class="bg-[#121212] text-white rounded-lg border border-gray-800 p-4 w-72 shadow-lg">
+  <!-- Active Lotteries -->
+<h2 class="text-2xl font-semibold mb-4">🎟️ Active Lotteries</h2>
+<div class="grid md:grid-cols-3 sm:grid-cols-2 gap-6 mb-10">
+    {% for lottery in lotteries %}
+        {% if lottery.is_active %}
+       <div class="bg-[#121212] text-white rounded-lg border border-gray-800 shadow-lg overflow-hidden">
+            <!-- Image Banner -->
+            <img src="{{ lottery.image_field }}" alt="Lottery image" class="w-full h-40 object-cover">
+<a href = "{% url 'runninglotteryview' lottery.lottery_id  %}"> 
+            <div class="p-4">
                 <h3 class="text-lg font-semibold mb-1">{{ lottery.lottery_name }}</h3>
                 <div class="text-sm text-gray-400 mb-3 flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -67,32 +64,35 @@
                     Opens: {{ lottery.created_at|date:"j M Y" }}
                 </div>
                 <div class="flex justify-between items-center text-sm mb-4">
-                    <div class="flex items-center text-teal-400 font-medium">
-                        <span class="mr-1">Ξ</span> Buy-in:
-                    </div>
-                    <div class="text-white font-semibold">{{ lottery.amount }}ETH</div>
-                </div>
+                    <div class="text-teal-400 font-medium">Buy-in:</div>
+                    <div class="text-white font-semibold">{{ lottery.amount }} ETH</div>
+                </div></a>
                 <a href="{% url 'buy' lottery.lottery_id %}">
-                <button class="w-full bg-teal-500 hover:bg-teal-600 text-black font-semibold py-2 rounded-md transition duration-200">
-                    Enter Draw
-                </button>
+                    <button class="w-full bg-teal-500 hover:bg-teal-600 text-black font-semibold py-2 rounded-md transition duration-200">
+                        Enter Draw
+                    </button>
                 </a>
             </div>
-        </div>
-        <a>
-            
-    
-            {% endif %}
-        {% endfor %}
-     
+        </div> 
+        
+        {% endif %}
+    {% endfor %}
+</div>
+
     <!-- Recent Winners -->
     <h2 class="text-2xl font-semibold mb-4">🏆 Recent Winners</h2>
-    <div class="grid md:grid-cols-3 gap-6 mb-10">
+    <div class="grid md:grid-cols-3 sm:grid-cols-2 gap-6 mb-10">
         {% for winner in winners %}
             <div class="bg-zinc-900 p-4 rounded-lg border border-green-500">
-                <p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-award w-5 h-5 text-primary"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"></path><circle cx="12" cy="8" r="6"></circle></svg> <strong>{{ winner.name }}</strong></p>
-                <p>🏅 Won: <span class="text-green-400 font-bold">${{ winner.amount }}</span></p>
-                <a href="{{ winner.tx_url }}" target="_blank" class="text-cyan-400 underline">View Transaction</a>
+                <p class="flex items-center gap-2 text-white font-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <circle cx="12" cy="8" r="6"></circle>
+                        <path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526" />
+                    </svg>
+                    <strong>{{ winner.name }}</strong>
+                </p>
+                <p class="mt-1">🏅 Won: <span class="text-green-400 font-bold">${{ winner.amount }}</span></p>
+                <a href="{{ winner.tx_url }}" target="_blank" class="text-cyan-400 underline mt-2 inline-block">View Transaction</a>
             </div>
         {% endfor %}
     </div>
@@ -101,8 +101,7 @@
     <div class="bg-zinc-800 p-6 rounded-lg shadow border border-blue-500">
         <h2 class="text-xl font-bold mb-2">Want to Organize?</h2>
         <p class="mb-4 text-gray-300">Host your own lottery event easily.</p>
-        <a href="{% url 'login' %}"
-           class="bg-blue-600 hover:bg-blue-800 text-white py-2 px-4 rounded">
+        <a href="{% url 'login' %}" class="bg-blue-600 hover:bg-blue-800 text-white py-2 px-4 rounded">
             Organize a Lottery
         </a>
     </div>

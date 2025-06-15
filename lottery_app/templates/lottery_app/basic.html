@@ -7,21 +7,110 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+     <style>
+        /* Replicating theme variables from globals.css for dark mode */
+        :root {
+            --background: 220 25% 10%; /* Deep Dark Blue/Gray */
+            --foreground: 210 20% 90%; /* Light Gray */
+            --card: 220 25% 15%; /* Slightly Lighter Dark Blue/Gray */
+            --card-foreground: 210 20% 90%;
+            --popover: 220 25% 12%;
+            --popover-foreground: 210 20% 90%;
+            --primary: 180 100% 25%; /* Teal: #008080 */
+            --primary-foreground: 0 0% 100%; /* White */
+            --secondary: 220 20% 25%; /* Muted Darker Blue/Gray */
+            --secondary-foreground: 210 15% 75%; /* Lighter Gray for Secondary */
+            --muted: 220 25% 20%;
+            --muted-foreground: 210 15% 60%; /* Mid Gray */
+            --accent: 180 100% 25%; /* Teal */
+            --accent-foreground: 0 0% 100%; /* White */
+            --destructive: 0 60% 50%; /* Standard Red */
+            --destructive-foreground: 0 0% 100%;
+            --border: 220 25% 22%;
+            --input: 220 25% 22%;
+            --ring: 180 100% 35%; /* Slightly lighter Teal for focus rings */
+            --radius: 0.5rem;
+        }
+        body {
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+            font-family: Arial, Helvetica, sans-serif; /* Basic fallback */
+        }
+        .bg-background { background-color: hsl(var(--background)); }
+        .text-foreground { color: hsl(var(--foreground)); }
+        .bg-card { background-color: hsl(var(--card)); }
+        .text-card-foreground { color: hsl(var(--card-foreground)); }
+        .bg-primary { background-color: hsl(var(--primary)); }
+        .text-primary { color: hsl(var(--primary)); }
+        .text-primary-foreground { color: hsl(var(--primary-foreground)); }
+        .bg-secondary { background-color: hsl(var(--secondary)); }
+        .text-secondary-foreground { color: hsl(var(--secondary-foreground)); }
+        .bg-muted { background-color: hsl(var(--muted)); }
+        .text-muted-foreground { color: hsl(var(--muted-foreground)); }
+        .bg-accent { background-color: hsl(var(--accent)); }
+        .text-accent { color: hsl(var(--accent)); }
+        .text-accent-foreground { color: hsl(var(--accent-foreground)); }
+        .bg-destructive { background-color: hsl(var(--destructive)); }
+        .text-destructive { color: hsl(var(--destructive)); }
+        .text-destructive-foreground { color: hsl(var(--destructive-foreground)); }
+        .border-border { border-color: hsl(var(--border)); }
+        .border-input { border-color: hsl(var(--input)); }
+        .ring-ring { --tw-ring-color: hsl(var(--ring)); }
+        .rounded-lg { border-radius: var(--radius); }
+        .rounded-md { border-radius: calc(var(--radius) - 2px); }
+        .rounded-sm { border-radius: calc(var(--radius) - 4px); }
+        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        .hover\:shadow-primary\/30:hover { box-shadow: 0 10px 15px -3px hsla(var(--primary), 0.3), 0 4px 6px -2px hsla(var(--primary), 0.3); }
+
+        /* Basic modal styling */
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          background-color: rgba(0, 0, 0, 0.8);
+          z-index: 50;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .modal-content {
+          position: relative;
+          background-color: hsl(var(--card));
+          color: hsl(var(--card-foreground));
+          border-radius: var(--radius);
+          border: 1px solid hsl(var(--border));
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+        .hidden { display: none; }
+
+         /* Skeleton styles */
+        @keyframes pulse {
+          50% { opacity: .5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .skeleton { background-color: hsl(var(--muted)); }
+        .ring-offset-background { --tw-ring-offset-color: hsl(var(--background)); }
+        .ring-offset-2 { --tw-ring-offset-width: 2px; }
+        .ring-primary { --tw-ring-color: hsl(var(--primary)); }
+        .ring-2 { --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color); --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); }
+        .whitespace-pre-wrap { white-space: pre-wrap; }
+    </style>
 </head>
-<body class="bg-black text-white min-h-screen font-sans">
+<body class="min-h-screen bg-background text-foreground font-sans antialiased">
 
-    <!-- Navbar -->
-    <nav class="bg-black text-white px-6 py-4 flex justify-between items-center shadow-md">
-        <!-- Left: Logo -->
-        <div class="flex items-center gap-2 text-xl font-bold">
-            <a href="{% url 'home' %}" 
-            <span>🎟</span>
-            <span>Lucky Draw</span></a>
-        </div>
-
-        <!-- Right: Nav Links -->
+    <!-- App Header -->
+    <header class="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div class="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <a href="{% url 'home' %}" class="flex items-center space-x-2">
+                <!-- Coins Icon SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82-.71-.71z"/></svg>
+                <span class="text-xl font-bold tracking-tight text-foreground">BlockLotto</span>
+            </a>
+         
         <div class="flex items-center gap-6">
-            <a href="#" class="text-sm hover:underline">Organize</a>
+            <a href="{% url 'organizer' %}" class="text-sm hover:underline">Organize</a>
             <a href="{% url 'login' %}" 
                class="bg-white text-black font-semibold text-sm px-4 py-1.5 rounded-md hover:bg-gray-200 flex items-center gap-2 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -32,8 +121,12 @@
                 Login
             </a>
         </div>
-    </nav>
+        </div>
+    </header>
 
+
+
+</head>
 
     <!-- Main Content Placeholder -->
     <main class="p-8 text-center">

@@ -32,5 +32,8 @@ urlpatterns = [
     path('buy/<int:lottery_id>', views.Buy, name='buy'),
     path('organizer/', views.organizer, name='organizer'),
     path('runninglotteryview/<int:lottery_id>/', views.runninglotteryview, name='runninglotteryview'),
-   
+    path('organizer/update-image/', views.update_image),
+    path('organizer/update-description/', views.update_description),
+    path('organizer/update-name/', views.update_name),
+    
 ]

@@ -1,0 +1,786 @@
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlockLotto - Decentralized Lottery Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Replicating theme variables from globals.css for dark mode */
+        :root {
+            --background: 220 25% 10%; /* Deep Dark Blue/Gray */
+            --foreground: 210 20% 90%; /* Light Gray */
+            --card: 220 25% 15%; /* Slightly Lighter Dark Blue/Gray */
+            --card-foreground: 210 20% 90%;
+            --popover: 220 25% 12%;
+            --popover-foreground: 210 20% 90%;
+            --primary: 180 100% 25%; /* Teal: #008080 */
+            --primary-foreground: 0 0% 100%; /* White */
+            --secondary: 220 20% 25%; /* Muted Darker Blue/Gray */
+            --secondary-foreground: 210 15% 75%; /* Lighter Gray for Secondary */
+            --muted: 220 25% 20%;
+            --muted-foreground: 210 15% 60%; /* Mid Gray */
+            --accent: 180 100% 25%; /* Teal */
+            --accent-foreground: 0 0% 100%; /* White */
+            --destructive: 0 60% 50%; /* Standard Red */
+            --destructive-foreground: 0 0% 100%;
+            --border: 220 25% 22%;
+            --input: 220 25% 22%;
+            --ring: 180 100% 35%; /* Slightly lighter Teal for focus rings */
+            --radius: 0.5rem;
+        }
+        body {
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+            font-family: Arial, Helvetica, sans-serif; /* Basic fallback */
+        }
+        .bg-background { background-color: hsl(var(--background)); }
+        .text-foreground { color: hsl(var(--foreground)); }
+        .bg-card { background-color: hsl(var(--card)); }
+        .text-card-foreground { color: hsl(var(--card-foreground)); }
+        .bg-primary { background-color: hsl(var(--primary)); }
+        .text-primary { color: hsl(var(--primary)); }
+        .text-primary-foreground { color: hsl(var(--primary-foreground)); }
+        .bg-secondary { background-color: hsl(var(--secondary)); }
+        .text-secondary-foreground { color: hsl(var(--secondary-foreground)); }
+        .bg-muted { background-color: hsl(var(--muted)); }
+        .text-muted-foreground { color: hsl(var(--muted-foreground)); }
+        .bg-accent { background-color: hsl(var(--accent)); }
+        .text-accent { color: hsl(var(--accent)); }
+        .text-accent-foreground { color: hsl(var(--accent-foreground)); }
+        .bg-destructive { background-color: hsl(var(--destructive)); }
+        .text-destructive { color: hsl(var(--destructive)); }
+        .text-destructive-foreground { color: hsl(var(--destructive-foreground)); }
+        .border-border { border-color: hsl(var(--border)); }
+        .border-input { border-color: hsl(var(--input)); }
+        .ring-ring { --tw-ring-color: hsl(var(--ring)); }
+        .rounded-lg { border-radius: var(--radius); }
+        .rounded-md { border-radius: calc(var(--radius) - 2px); }
+        .rounded-sm { border-radius: calc(var(--radius) - 4px); }
+        .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
+        .hover\:shadow-primary\/30:hover { box-shadow: 0 10px 15px -3px hsla(var(--primary), 0.3), 0 4px 6px -2px hsla(var(--primary), 0.3); }
+
+        /* Basic modal styling */
+        .modal-overlay {
+          position: fixed;
+          inset: 0;
+          background-color: rgba(0, 0, 0, 0.8);
+          z-index: 50;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .modal-content {
+          position: relative;
+          background-color: hsl(var(--card));
+          color: hsl(var(--card-foreground));
+          border-radius: var(--radius);
+          border: 1px solid hsl(var(--border));
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+        .hidden { display: none; }
+
+         /* Skeleton styles */
+        @keyframes pulse {
+          50% { opacity: .5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .skeleton { background-color: hsl(var(--muted)); }
+        .ring-offset-background { --tw-ring-offset-color: hsl(var(--background)); }
+        .ring-offset-2 { --tw-ring-offset-width: 2px; }
+        .ring-primary { --tw-ring-color: hsl(var(--primary)); }
+        .ring-2 { --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color); --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color); box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000); }
+        .whitespace-pre-wrap { white-space: pre-wrap; }
+    </style>
+</head>
+<body class="min-h-screen bg-background text-foreground font-sans antialiased">
+
+    <!-- App Header -->
+    <header class="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div class="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <a href="#" class="flex items-center space-x-2">
+                <!-- Coins Icon SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82-.71-.71z"/></svg>
+                <span class="text-xl font-bold tracking-tight text-foreground">BlockLotto</span>
+            </a>
+            <button id="createLotteryBtn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+                <!-- PlusCircle Icon SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                Create Lottery
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- User Profile Panel -->
+            <aside class="lg:col-span-3">
+                <div class="sticky top-20">
+                    <div class="rounded-lg border bg-card text-card-foreground shadow-xl">
+                        <div class="flex flex-col space-y-1.5 p-6 items-center text-center">
+                             <div class="relative flex h-24 w-24 shrink-0 overflow-hidden rounded-full mb-3 ring-2 ring-primary ring-offset-2 ring-offset-background">
+                                <img class="aspect-square h-full w-full" src="https://picsum.photos/seed/satoshi/100/100" alt="Satoshi Nakamoto" data-ai-hint="profile picture">
+                             </div>
+                            <div class="text-2xl font-semibold leading-none tracking-tight">{{ request.user.name}}</div>
+                            <div class="text-sm text-muted-foreground flex items-center justify-center">
+                                <!-- ShieldCheck Icon SVG -->
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-1 text-primary"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+                                <span id="walletAddress">{{request.user.walet_address}}</span>
+                            </div>
+                        </div>
+                        <div class="p-6 pt-0">
+                            <div class="space-y-3 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-muted-foreground">Participated:</span>
+                                    <span class="font-medium">5 Lotteries</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-muted-foreground">Wins:</span>
+                                    <span class="font-medium text-primary">1 Lottery</span>
+                                </div>
+                            </div>
+                            <hr class="shrink-0 bg-border h-[1px] w-full my-4" />
+                            <div class="space-y-2">
+                                <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full">
+                                    <!-- UserCog Icon SVG -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="15" r="3"/><circle cx="9" cy="7" r="4"/><path d="M10 15H6a4 4 0 0 0-4 4v2"/><path d="m21.7 16.4-.9-.3"/><path d="m15.2 13.9-.9-.3"/><path d="m16.6 18.7.3-.9"/><path d="m19.1 12.2.3-.9"/><path d="m19.6 18.7-.4-1"/><path d="m16.8 12.3-.4-1"/><path d="m14.3 16.6 1-.4"/><path d="m20.7 13.8 1-.4"/></svg> Manage Profile
+                                </button>
+                                <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full" href="{% url 'logout' %}" >
+                                    <!-- LogOut Icon SVG -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Lotteries Grid -->
+            <section class="lg:col-span-9">
+                <h2 class="text-3xl font-bold tracking-tight text-foreground mb-6">
+                    Active Lotteries
+                </h2>
+                <div id="lotteryGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                   <!-- Skeleton loaders -->
+                   <div class="card-skeleton flex flex-col space-y-3 p-4 border border-border rounded-lg shadow-md bg-card">
+                     <div class="skeleton h-48 w-full rounded-md animate-pulse"></div>
+                     <div class="space-y-2 pt-2">
+                       <div class="skeleton h-6 w-3/4 animate-pulse"></div>
+                       <div class="skeleton h-4 w-1/2 animate-pulse"></div>
+                     </div>
+                     <div class="space-y-2 pt-2">
+                       <div class="skeleton h-4 w-full animate-pulse"></div>
+                       <div class="skeleton h-4 w-full animate-pulse"></div>
+                       <div class="skeleton h-4 w-5/6 animate-pulse"></div>
+                     </div>
+                     <div class="skeleton h-10 w-full mt-auto animate-pulse"></div>
+                   </div>
+                    <div class="card-skeleton flex flex-col space-y-3 p-4 border border-border rounded-lg shadow-md bg-card">
+                     <div class="skeleton h-48 w-full rounded-md animate-pulse"></div>
+                     <div class="space-y-2 pt-2">
+                       <div class="skeleton h-6 w-3/4 animate-pulse"></div>
+                       <div class="skeleton h-4 w-1/2 animate-pulse"></div>
+                     </div>
+                     <div class="space-y-2 pt-2">
+                       <div class="skeleton h-4 w-full animate-pulse"></div>
+                       <div class="skeleton h-4 w-full animate-pulse"></div>
+                       <div class="skeleton h-4 w-5/6 animate-pulse"></div>
+                     </div>
+                     <div class="skeleton h-10 w-full mt-auto animate-pulse"></div>
+                   </div>
+                    <div class="card-skeleton flex flex-col space-y-3 p-4 border border-border rounded-lg shadow-md bg-card">
+                     <div class="skeleton h-48 w-full rounded-md animate-pulse"></div>
+                     <div class="space-y-2 pt-2">
+                       <div class="skeleton h-6 w-3/4 animate-pulse"></div>
+                       <div class="skeleton h-4 w-1/2 animate-pulse"></div>
+                     </div>
+                     <div class="space-y-2 pt-2">
+                       <div class="skeleton h-4 w-full animate-pulse"></div>
+                       <div class="skeleton h-4 w-full animate-pulse"></div>
+                       <div class="skeleton h-4 w-5/6 animate-pulse"></div>
+                     </div>
+                     <div class="skeleton h-10 w-full mt-auto animate-pulse"></div>
+                   </div>
+                   <!-- Lottery cards will be injected here -->
+
+
+                </div>
+                <p id="noLotteriesMessage" class="hidden text-center text-muted-foreground py-10">No lotteries available at the moment. Check back soon!</p>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 text-center text-xs text-muted-foreground border-t border-border">
+        © <span id="footerYear"></span> BlockLotto. All rights reserved. Play responsibly.
+    </footer>
+
+    <!-- Create Lottery Modal -->
+    <div id="createLotteryModal" class="modal-overlay hidden">
+        <div class="modal-content sm:max-w-[525px] w-full m-4 p-0 shadow-xl">
+             <button id="createModalCloseBtn" class="absolute right-4 top-4 text-muted-foreground hover:text-foreground z-10">
+                <!-- X Icon SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+            </button>
+            <div class="p-6">
+                <div class="flex flex-col space-y-1.5 text-center sm:text-left mb-4">
+                    <h2 class="text-lg font-semibold leading-none tracking-tight flex items-center text-2xl">
+                        <!-- Coins Icon SVG -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-primary"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82-.71-.71z"/></svg> Create New Lottery
+                    </h2>
+                    <p class="text-sm text-muted-foreground">
+                        Define the parameters for your new lottery. This will simulate deploying a new contract.
+                    </p>
+                </div>
+                <form id="createLotteryForm" class="space-y-6 py-2">
+                    <div>
+                        <label for="name" class="text-sm font-medium text-foreground">Lottery Name</label>
+                        <input id="name" name="name" placeholder="e.g., Weekly Ethereum Draw" class="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" required minlength="3">
+                        <p id="nameError" class="text-xs text-destructive mt-1 hidden"></p>
+                    </div>
+                    <div>
+                        <label for="entryFee" class="text-sm font-medium text-foreground">Entry Fee (Tokens)</label>
+                        <input id="entryFee" name="entryFee" type="number" step="0.01" min="0.01" placeholder="e.g., 10" class="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" required>
+                        <p id="entryFeeError" class="text-xs text-destructive mt-1 hidden"></p>
+                    </div>
+                    <div>
+                        <label for="prizeDistribution" class="text-sm font-medium text-foreground">Prize Distribution</label>
+                        <textarea id="prizeDistribution" name="prizeDistribution" placeholder="e.g., Winner takes all; 70% 1st, 20% 2nd, 10% 3rd" class="mt-1 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm" required minlength="10"></textarea>
+                        <p id="prizeDistributionError" class="text-xs text-destructive mt-1 hidden"></p>
+                    </div>
+                    <div>
+                        <label for="description" class="text-sm font-medium text-foreground">Description (Optional)</label>
+                        <textarea id="description" name="description" placeholder="Provide a brief description or any special rules for this lottery." class="mt-1 flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"></textarea>
+                         <p id="descriptionError" class="text-xs text-destructive mt-1 hidden"></p>
+                    </div>
+                    <p id="formError" class="text-sm text-destructive text-center hidden"></p>
+                     <p id="formSuccess" class="text-sm text-green-400 text-center hidden"></p>
+                    <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 pt-4">
+                        <button type="button" id="createModalCancelBtn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 mt-2 sm:mt-0">Cancel</button>
+                        <button type="submit" id="createSubmitBtn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">Create & Deploy</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+     <!-- Lottery Details Modal -->
+    <div id="detailsLotteryModal" class="modal-overlay hidden">
+        <div class="modal-content sm:max-w-lg md:max-w-2xl w-full m-4 p-0 shadow-xl">
+            <button id="detailsModalCloseBtn" class="absolute right-4 top-4 text-muted-foreground hover:text-foreground z-10">
+                <!-- X Icon SVG -->
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+            </button>
+            <div id="detailsModalContent" class="max-h-[calc(100vh-100px)] overflow-y-auto">
+                <!-- Content injected by JS -->
+            </div>
+             <div class="p-6 border-t border-border bg-muted/50 flex justify-end">
+                <button id="detailsModalFooterCloseBtn" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">Close</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script > 
+// --- DATA ---
+const mockLotteries = [
+  {
+    id: '1',
+    name: 'Genesis Weekly Draw',
+    entryFee: 10,
+    prizeDistribution: 'Winner takes all. 5% platform fee.',
+    status: 'Open', // Using string enums for simplicity
+    participants: 150,
+    prizePool: 1425, // 1500 * 0.95
+    deployedAddress: '0x123AbcDeFgHiJkLmNoPqRsTuVwXyZ01234567890',
+    drawDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    description: 'The inaugural weekly draw! Get your tickets now for a chance to win big. Transparent and fair.',
+    imageUrl: 'https://picsum.photos/seed/lotto1/600/400',
+  },
+  {
+    id: '2',
+    name: 'Monthly Mega Jackpot',
+    entryFee: 50,
+    prizeDistribution: '70% to 1st place, 20% to 2nd place, 10% to 3rd place. 3% platform fee.',
+    status: 'Drawing',
+    participants: 523,
+    prizePool: 25365, // 50 * 523 * 0.97
+    deployedAddress: '0x456QrStUvWxYzAbCdEfGhIjKlMnOpQrStUvWxYz',
+    drawDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    description: 'Our biggest monthly jackpot yet! Multiple winners will share the massive prize pool.',
+    imageUrl: 'https://picsum.photos/seed/lotto2/600/400',
+  },
+  {
+    id: '3',
+    name: 'Flash Friday Lotto',
+    entryFee: 5,
+    prizeDistribution: 'Top 5 winners share the pool equally. 4% platform fee.',
+    status: 'Closed',
+    participants: 312,
+    prizePool: 1500, // 5 * 312 * 0.96
+    winner: '0x789PlayerOneWinner',
+    deployedAddress: '0x789MnOpQrStUvWxYzAbCdEfGhIjKlMnOpQrStUv',
+    drawDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+    description: 'Quick and exciting! This lottery has concluded. Congratulations to the winner!',
+    imageUrl: 'https://picsum.photos/seed/lotto3/600/400',
+  },
+  {
+    id: '4',
+    name: 'Community Choice Draw',
+    entryFee: 20,
+    prizeDistribution: 'Prize structure voted by the community. 5% platform fee.',
+    status: 'Open',
+    participants: 88,
+    prizePool: 1672, // 20 * 88 * 0.95
+    deployedAddress: '0xABCDefGhIjKlMnOpQrStUvWxYz0123456789Ab',
+    drawDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+    description: 'You decided the rules, now play to win! This lottery is driven by community polls.',
+    imageUrl: 'https://picsum.photos/seed/lotto4/600/400',
+  },
+];
+
+let currentLotteries = []; // Holds the currently displayed lotteries
+
+// --- DOM Elements ---
+const lotteryGrid = document.getElementById('lotteryGrid');
+const noLotteriesMessage = document.getElementById('noLotteriesMessage');
+const createLotteryBtn = document.getElementById('createLotteryBtn');
+const createLotteryModal = document.getElementById('createLotteryModal');
+const createModalCloseBtn = document.getElementById('createModalCloseBtn');
+const createModalCancelBtn = document.getElementById('createModalCancelBtn');
+const createLotteryForm = document.getElementById('createLotteryForm');
+const createSubmitBtn = document.getElementById('createSubmitBtn');
+const detailsLotteryModal = document.getElementById('detailsLotteryModal');
+const detailsModalCloseBtn = document.getElementById('detailsModalCloseBtn');
+const detailsModalFooterCloseBtn = document.getElementById('detailsModalFooterCloseBtn');
+const detailsModalContent = document.getElementById('detailsModalContent');
+const walletAddressSpan = document.getElementById('walletAddress');
+const footerYearSpan = document.getElementById('footerYear');
+
+// Form Error Elements
+const nameError = document.getElementById('nameError');
+const entryFeeError = document.getElementById('entryFeeError');
+const prizeDistributionError = document.getElementById('prizeDistributionError');
+const descriptionError = document.getElementById('descriptionError'); // Optional field, but good practice
+const formError = document.getElementById('formError');
+const formSuccess = document.getElementById('formSuccess');
+
+// --- UTILITY FUNCTIONS ---
+const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit'
+      });
+    } catch (e) {
+      return 'Invalid Date';
+    }
+};
+
+const truncateAddress = (address, start = 6, end = 4) => {
+    if (!address || address.length < start + end) return address;
+    return `${address.slice(0, start)}...${address.slice(-end)}`;
+};
+
+const getStatusBadgeClasses = (status) => {
+    switch (status) {
+      case 'Open':
+        return 'bg-primary text-primary-foreground';
+      case 'Drawing':
+        return 'bg-secondary text-secondary-foreground';
+      case 'Closed':
+        return 'border border-border text-foreground';
+      case 'Draft':
+        return 'bg-destructive text-destructive-foreground';
+      default:
+        return 'border border-border text-foreground';
+    }
+};
+
+const copyToClipboard = (text) => {
+    if (!text || !navigator.clipboard) {
+        alert('Clipboard not available or no text to copy.');
+        return;
+    }
+    navigator.clipboard.writeText(text).then(() => {
+      alert("Copied!"); // Simple alert, replace with a toast notification if desired
+    }).catch(err => {
+      alert("Error copying text.");
+      console.error('Failed to copy:', err);
+    });
+};
+
+
+// --- RENDER FUNCTIONS ---
+const renderLotteryCard = (lottery) => {
+    const statusBadgeClasses = getStatusBadgeClasses(lottery.status);
+    const winnerInfo = lottery.status === 'Closed' && lottery.winner
+        ? `<div class="flex items-center pt-1">
+             <!-- Ticket Icon SVG -->
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-green-500"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+             <span class="text-muted-foreground">Winner:</span>
+             <span class="ml-auto font-semibold text-green-400 truncate" title="${lottery.winner}">
+               ${truncateAddress(lottery.winner, 6, 4)}
+             </span>
+           </div>`
+        : '';
+
+    const cardHTML = `
+        <div class="flex flex-col h-full overflow-hidden rounded-lg border bg-card text-card-foreground shadow-lg hover:shadow-primary/30 transition-shadow duration-300">
+            ${lottery.imageUrl ? `
+                <div class="relative w-full h-48">
+                    <img src="${lottery.imageUrl}" alt="${lottery.name}" class="absolute inset-0 w-full h-full object-cover" data-ai-hint="lottery event" />
+                    <span class="absolute top-2 right-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusBadgeClasses}">
+                        ${lottery.status}
+                    </span>
+                </div>` : ''
+            }
+            <div class="flex flex-col space-y-1.5 p-6 pb-3">
+                <h3 class="text-xl font-semibold tracking-tight leading-tight truncate" title="${lottery.name}">
+                    ${lottery.name}
+                </h3>
+                ${!lottery.imageUrl ? `
+                    <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold w-fit ${statusBadgeClasses}">
+                        ${lottery.status}
+                    </span>` : ''
+                }
+            </div>
+            <div class="p-6 pt-0 flex-grow space-y-3 text-sm">
+                <div class="flex items-center">
+                    <!-- DollarSign Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-primary"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span class="text-muted-foreground">Entry:</span>
+                    <span class="ml-auto font-medium">${lottery.entryFee} Tokens</span>
+                </div>
+                <div class="flex items-center">
+                     <!-- Award Icon SVG -->
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-primary"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+                    <span class="text-muted-foreground">Prize Pool:</span>
+                    <span class="ml-auto font-medium">${lottery.prizePool} Tokens</span>
+                </div>
+                <div class="flex items-center">
+                     <!-- Users Icon SVG -->
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-primary"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span class="text-muted-foreground">Participants:</span>
+                    <span class="ml-auto font-medium">${lottery.participants}</span>
+                </div>
+                <div class="flex items-center">
+                     <!-- CalendarDays Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-primary"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
+                    <span class="text-muted-foreground">Draw Date:</span>
+                    <span class="ml-auto font-medium">${formatDate(lottery.drawDate)}</span>
+                </div>
+                ${winnerInfo}
+            </div>
+            <div class="flex items-center p-6 pt-0">
+                <button data-lottery-id="${lottery.id}" class="view-details-btn inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 w-full">
+                    <!-- Info Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> View Details
+                    <!-- ArrowRight Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-auto"><line x1="5" x2="19" y1="12" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+            </div>
+        </div>
+    `;
+    return cardHTML;
+};
+
+const renderLotteryGrid = (lotteries) => {
+    lotteryGrid.innerHTML = ''; // Clear existing content or skeletons
+    if (!lotteries || lotteries.length === 0) {
+        noLotteriesMessage.classList.remove('hidden');
+        return;
+    }
+    noLotteriesMessage.classList.add('hidden');
+    lotteries.forEach(lottery => {
+        const cardElement = document.createElement('div');
+        cardElement.innerHTML = renderLotteryCard(lottery);
+        lotteryGrid.appendChild(cardElement.firstElementChild); // Append the card itself
+    });
+
+    // Add event listeners to the new buttons
+    document.querySelectorAll('.view-details-btn').forEach(button => {
+        button.addEventListener('click', handleViewDetailsClick);
+    });
+};
+
+
+const renderLotteryDetails = (lottery) => {
+    const statusBadgeClasses = getStatusBadgeClasses(lottery.status);
+    const formattedDrawDate = formatDate(lottery.drawDate);
+    const contractInfo = lottery.deployedAddress
+        ? `<div class="md:col-span-2 flex items-center">
+             <!-- ShieldCheck Icon SVG -->
+             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-primary flex-shrink-0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+             <span class="text-muted-foreground mr-2">Contract:</span>
+             <span class="font-mono text-xs bg-muted px-2 py-1 rounded-md truncate mr-2" title="${lottery.deployedAddress}">
+               ${lottery.deployedAddress}
+             </span>
+             <button title="Copy Contract Address" class="copy-btn inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-7 w-7 p-0" data-copy-text="${lottery.deployedAddress}">
+                 <!-- ClipboardCopy Icon SVG -->
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+             </button>
+           </div>`
+        : '';
+
+    const winnerInfo = lottery.status === 'Closed' && lottery.winner
+        ? `<div class="md:col-span-2 flex items-center">
+             <!-- Ticket Icon SVG -->
+             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-green-500 flex-shrink-0"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+             <span class="text-muted-foreground mr-2">Winner:</span>
+             <span class="font-semibold text-green-400 truncate mr-2" title="${lottery.winner}">${lottery.winner}</span>
+             <button title="Copy Winner Address" class="copy-btn inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-7 w-7 p-0" data-copy-text="${lottery.winner}">
+                  <!-- ClipboardCopy Icon SVG -->
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+             </button>
+           </div>`
+        : '';
+
+     const enterButton = lottery.status === 'Open'
+        ? `<button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 w-full mt-4">
+             <!-- Ticket Icon SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg> Enter Lottery
+           </button>`
+        : lottery.status !== 'Draft'
+          ? `<button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-8 w-full mt-4" disabled>
+              Lottery Not Open For Entries
+            </button>`
+          : ''; // No button for draft status
+
+    const infoItem = (iconSvg, label, value) => `
+      <div class="flex items-center">
+        <span class="text-primary mr-2 flex-shrink-0 [&>svg]:w-5 [&>svg]:h-5">${iconSvg}</span>
+        <span class="text-muted-foreground mr-1">${label}:</span>
+        <span class="font-medium text-foreground ml-auto text-right">${value}</span>
+      </div>`;
+
+
+    const detailsHTML = `
+        ${lottery.imageUrl ? `
+            <div class="relative w-full h-64 rounded-t-lg overflow-hidden">
+                <img src="${lottery.imageUrl}" alt="${lottery.name}" class="absolute inset-0 w-full h-full object-cover" data-ai-hint="lottery banner" />
+                <span class="absolute top-4 right-4 inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold shadow-lg ${statusBadgeClasses}">
+                    ${lottery.status}
+                </span>
+            </div>` : ''}
+         <div class="p-6 space-y-6">
+            <div class="space-y-2">
+                <h2 class="text-3xl font-bold tracking-tight">${lottery.name}</h2>
+                ${!lottery.imageUrl ? `
+                    <span class="inline-flex items-center rounded-full border px-3 py-1.5 text-sm font-semibold w-fit ${statusBadgeClasses}">
+                        ${lottery.status}
+                    </span>` : ''}
+                ${lottery.description ? `<p class="text-base text-muted-foreground pt-1">${lottery.description}</p>` : ''}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                ${infoItem('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>', 'Entry Fee', `${lottery.entryFee} Tokens`)}
+                ${infoItem('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>', 'Total Prize Pool', `${lottery.prizePool} Tokens`)}
+                ${infoItem('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>', 'Participants', String(lottery.participants))}
+                ${infoItem('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>', 'Draw Date', formattedDrawDate)}
+                ${contractInfo}
+                ${winnerInfo}
+            </div>
+
+            <div>
+              <h4 class="text-lg font-semibold mb-2 text-foreground flex items-center">
+                 <!-- Info Icon SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-primary"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                Prize Distribution
+              </h4>
+              <p class="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">
+                ${lottery.prizeDistribution}
+              </p>
+            </div>
+            ${enterButton}
+        </div>
+    `;
+    detailsModalContent.innerHTML = detailsHTML;
+
+    // Add event listeners for copy buttons inside the modal
+    detailsModalContent.querySelectorAll('.copy-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const textToCopy = event.currentTarget.getAttribute('data-copy-text');
+            copyToClipboard(textToCopy);
+        });
+    });
+};
+
+
+// --- EVENT HANDLERS ---
+const openCreateModal = () => createLotteryModal.classList.remove('hidden');
+const closeCreateModal = () => {
+    createLotteryModal.classList.add('hidden');
+    clearFormErrors(); // Clear errors when closing
+    createLotteryForm.reset(); // Reset form fields
+};
+
+const openDetailsModal = () => detailsLotteryModal.classList.remove('hidden');
+const closeDetailsModal = () => detailsLotteryModal.classList.add('hidden');
+
+const handleViewDetailsClick = (event) => {
+    const lotteryId = event.target.closest('button').getAttribute('data-lottery-id');
+    const selectedLottery = currentLotteries.find(l => l.id === lotteryId);
+    if (selectedLottery) {
+        renderLotteryDetails(selectedLottery);
+        openDetailsModal();
+    } else {
+        console.error("Lottery not found:", lotteryId);
+        alert("Could not load lottery details.");
+    }
+};
+
+const clearFormErrors = () => {
+    nameError.textContent = ''; nameError.classList.add('hidden');
+    entryFeeError.textContent = ''; entryFeeError.classList.add('hidden');
+    prizeDistributionError.textContent = ''; prizeDistributionError.classList.add('hidden');
+    descriptionError.textContent = ''; descriptionError.classList.add('hidden');
+    formError.textContent = ''; formError.classList.add('hidden');
+    formSuccess.textContent = ''; formSuccess.classList.add('hidden');
+};
+
+const showFormError = (field, message) => {
+    const errorElement = document.getElementById(`${field}Error`);
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.classList.remove('hidden');
+    }
+};
+
+const handleCreateLotterySubmit = async (event) => {
+    event.preventDefault();
+    clearFormErrors();
+    createSubmitBtn.disabled = true;
+    createSubmitBtn.textContent = 'Creating...';
+
+    const formData = new FormData(createLotteryForm);
+    const name = formData.get('name');
+    const entryFee = formData.get('entryFee');
+    const prizeDistribution = formData.get('prizeDistribution');
+    const description = formData.get('description');
+
+    // Basic Client-Side Validation (mirroring Zod schema)
+    let isValid = true;
+    if (!name || name.length < 3) {
+        showFormError('name', 'Lottery name must be at least 3 characters.');
+        isValid = false;
+    }
+    const fee = parseFloat(entryFee);
+    if (isNaN(fee) || fee <= 0) {
+        showFormError('entryFee', 'Entry fee must be a positive number.');
+        isValid = false;
+    }
+     if (!prizeDistribution || prizeDistribution.length < 10) {
+        showFormError('prizeDistribution', 'Prize distribution details must be at least 10 characters.');
+        isValid = false;
+    }
+    // Description is optional, no validation needed unless specific rules apply
+
+    if (!isValid) {
+        formError.textContent = 'Validation failed. Please check the fields.';
+        formError.classList.remove('hidden');
+        createSubmitBtn.disabled = false;
+        createSubmitBtn.textContent = 'Create & Deploy';
+        return;
+    }
+
+    try {
+        // Simulate network delay and "deployment"
+        console.log(`Simulating deployment for: ${name}`);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const deployedAddress = `0x${Array(40).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+        console.log(`Deployed to: ${deployedAddress}`);
+
+        const newLottery = {
+            id: String(mockLotteries.length + 1 + Date.now()),
+            name,
+            entryFee: fee,
+            prizeDistribution,
+            description,
+            status: 'Draft', // Start as draft
+            participants: 0,
+            prizePool: 0,
+            deployedAddress,
+            drawDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            imageUrl: `https://picsum.photos/seed/lotto${Date.now()}/600/400`,
+        };
+
+        console.log('Simulated creation:', newLottery);
+
+        // Add to our local list (won't persist page refresh)
+        // In a real SPA with state management, you'd update the state here.
+        // For this simple version, we'll just show success and maybe re-render
+        // currentLotteries.push(newLottery); // Add if you want it to appear immediately
+
+        formSuccess.textContent = `Lottery "${name}" created (simulated)! Address: ${truncateAddress(deployedAddress)}`;
+        formSuccess.classList.remove('hidden');
+
+        // Optional: Re-render the grid if you add the new lottery to currentLotteries
+        // renderLotteryGrid(currentLotteries);
+
+        setTimeout(() => {
+            closeCreateModal();
+            createSubmitBtn.disabled = false;
+            createSubmitBtn.textContent = 'Create & Deploy';
+        }, 2000); // Close modal after 2 seconds
+
+    } catch (error) {
+        console.error('Error creating lottery (simulated):', error);
+        formError.textContent = 'An unexpected error occurred during simulation.';
+        formError.classList.remove('hidden');
+        createSubmitBtn.disabled = false;
+        createSubmitBtn.textContent = 'Create & Deploy';
+    }
+};
+
+
+// --- INITIALIZATION ---
+const initializeApp = () => {
+    // Set footer year
+    footerYearSpan.textContent = new Date().getFullYear();
+
+    // Set truncated wallet address (using a mock one)
+    const mockWallet = "0xYourExampleWalletAddressHere123456789";
+    walletAddressSpan.textContent = truncateAddress(mockWallet);
+
+    // Simulate fetching data and render grid
+    setTimeout(() => {
+        currentLotteries = [...mockLotteries]; // Copy mock data
+        renderLotteryGrid(currentLotteries);
+    }, 500); // Simulate loading delay
+
+    // Add event listeners
+    createLotteryBtn.addEventListener('click', openCreateModal);
+    createModalCloseBtn.addEventListener('click', closeCreateModal);
+    createModalCancelBtn.addEventListener('click', closeCreateModal);
+    createLotteryForm.addEventListener('submit', handleCreateLotterySubmit);
+
+    detailsModalCloseBtn.addEventListener('click', closeDetailsModal);
+    detailsModalFooterCloseBtn.addEventListener('click', closeDetailsModal);
+
+    // Close modal if clicking outside the content area
+    createLotteryModal.addEventListener('click', (event) => {
+        if (event.target === createLotteryModal) {
+            closeCreateModal();
+        }
+    });
+    detailsLotteryModal.addEventListener('click', (event) => {
+        if (event.target === detailsLotteryModal) {
+            closeDetailsModal();
+        }
+    });
+};
+
+// Run initialization when the DOM is ready
+document.addEventListener('DOMContentLoaded', initializeApp);
+
+       </script>
+</body>
+</html>
+
+    

@@ -68,6 +68,7 @@
     const contractAddress = "{{ lottery.contract_address }}";
     let contract;
     let connected = false;
+    let amount = "{{ lottery.amount }}"; //
 
     const connectBtn = document.getElementById('connectWallet');
     const disconnectBtn = document.getElementById('disconnectWallet');
@@ -118,7 +119,7 @@
         try {
             await contract.methods.enter().send({
                 from: userAccount,
-                value: web3.utils.toWei("0.002", "ether"),
+                value: web3.utils.toWei( amount , "ether"),
                 gas: 300000
             });
 
@@ -140,7 +141,7 @@
 
             if (response.ok) {
                 Swal.fire("Success", "You have entered the lottery!", "success")
-                    .then(() => window.location.href = "{% url 'home' %}");
+                    .then(() => window.location.href = "{% url 'runninglotteryview' lottery.lottery_id  %}");
             } else {
                 const error = await response.json();
                 throw new Error(error.error || "Unknown error");

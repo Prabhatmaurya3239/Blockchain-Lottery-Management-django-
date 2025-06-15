@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate, login, logout
 from .forms import SignUpForm, LoginForm, ForgetPasswordForm, ResetPasswordForm
 from .models import User,Lottery,Participant,solidity
 from django.contrib import messages
+from django.core.serializers.json import DjangoJSONEncoder
 import json
 
 def signup_view(request):
@@ -123,30 +124,43 @@ def Buy(request, lottery_id):
 @login_required
 def organizer(request):
     solidity_obj = solidity.objects.first()
+    
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            lottery_name = data.get('lottery_name')
-            isDeployed = data.get('isDeployed')
-            contract_address = data.get('contract_address')
-            lottery_amount = data.get('lottery_amount')
+
+            name = data.get('lottery_name')
+            address = data.get('contract_address')
+            amount = data.get('entry_fee')
+            image = data.get('image') or "default.png"
+            description = data.get('description')
+
+            if not name or not address or not amount:
+                return JsonResponse({"error": "All fields are required!"}, status=400)
+
             Lottery.objects.create(
-                lottery_name=lottery_name,
+                lottery_name=name,
+                contract_address=address,
+                amount=amount,
+                description=description,
+                image_field=image,
                 organizer=request.user,
-                amount=lottery_amount,
-                contract_address=contract_address,
                 is_active=True,
-                is_Deployed=isDeployed
+                is_Deployed=True
             )
-            return JsonResponse({"message": "Data received successfully!"})
+            print(contract_address)
+            print("Lottery created successfully!")
+            return JsonResponse({"message": "Lottery saved successfully!"})
         except Exception as e:
-            print(e)
+            print("Error in organizer POST:", e)
             return JsonResponse({"error": "Invalid data!"}, status=400)
+
     else:
         user = request.user
         lotteries = Lottery.objects.filter(organizer=user)
         contract_address = lotteries[0].contract_address if lotteries else None
         isDeployed = lotteries[0].is_Deployed if lotteries else False
+
         return render(request, 'lottery_app/organizer.html', {
             'user': user,
             'lotteries': lotteries,
@@ -154,5 +168,40 @@ def organizer(request):
             'isDeployed': json.dumps(isDeployed),
             'solidity_obj': solidity_obj
         })
+@login_required
+def update_image(request):
+    if request.method == 'POST':
+        lottery_id = request.POST.get('lottery_id')
+        image = request.FILES.get('image')
+        lottery = get_object_or_404(Lottery, lottery_id=lottery_id)
+        lottery.image_field = image
+        lottery.save()
+        messages.success(request, "Image updated successfully!")
+        return JsonResponse({'message': 'Image updated successfully'})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+@login_required
+def update_description(request):
+    if request.method == 'POST':
+            lottery_id = request.POST.get('lottery_id')
+            data = request.POST.get('data')
+            lottery = get_object_or_404(Lottery, lottery_id=lottery_id)
+            lottery.description = data
+            lottery.save()
+            messages.success(request, "description updated successfully!")
+            return JsonResponse({'message': 'Description updated successfully'})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+@login_required
+def update_name(request):
+    if request.method == 'POST':
+            lottery_id = request.POST.get('lottery_id')
+            data = request.POST.get('data')
+            lottery = get_object_or_404(Lottery, lottery_id=lottery_id)
+            lottery.lottery_name = data
+            lottery.save()
+            messages.success(request, "Name updated successfully!")
+            return JsonResponse({'message': 'Name updated successfully'})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+
 
 

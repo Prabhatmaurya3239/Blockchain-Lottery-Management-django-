@@ -57,6 +57,8 @@ class Lottery(models.Model):
     winner_address = models.CharField(max_length=42, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_Deployed =  models.BooleanField(default=False)
+    image_field = models.ImageField(upload_to='static/lottery_images/', blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
 
     def __str__(self):
        return self.lottery_name

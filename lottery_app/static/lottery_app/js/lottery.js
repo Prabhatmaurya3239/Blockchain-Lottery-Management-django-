@@ -258,3 +258,4 @@ window.addEventListener('load', async () => {
 });
 console.log("Contract address:", CONTRACT_ADDRESS);
 console.log("Using ABI:", ABI);
+
